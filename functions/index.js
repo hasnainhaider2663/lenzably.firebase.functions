@@ -31,14 +31,16 @@ exports.createThumbnailFromAsset = functions.firestore
         // Get an object representing the document
         // e.g. {'name': 'Marie', 'age': 66}
         const asset = snap.data();
-        console.log('snap',snap)
-        console.log('context',context)
+        console.log('snap', snap);
+        console.log('context', context);
 
-        const file = functions.storage.bucket().file(`asset.thumbnailURL`);
+        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`${asset.fullPath}`);
+        console.log('file', file)
+        // const file = functions.storage.bucket().file(`${asset.fullPath}`);
         const metaData = await file.getMetaData();
-        asset['thumbnails']['small'] = metaData[0].mediaLink
+        asset['thumbnails']['small'] = metaData[0].mediaLink;
         // access a particular field as you would any JS property
 
-    return     admin.firestore().doc('assets/' + asset.uid).set(asset);
+        return admin.firestore().doc('assets/' + asset.uid).set(asset);
         // perform desired operations ...
     });
