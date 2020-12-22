@@ -50,6 +50,6 @@ exports.createThumbnailFromAsset = functions.firestore
         asset['thumbnails']['small'] = url;
         // access a particular field as you would any JS property
 
-        return admin.firestore().doc('assets/' + asset.uid).update(asset);
+        return admin.firestore().doc('assets/' + assetId).update(asset);
         // perform desired operations ...
     });
