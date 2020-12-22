@@ -34,11 +34,12 @@ exports.createThumbnailFromAsset = functions.firestore
         // e.g. {'name': 'Marie', 'age': 66}
         const snapData = snap.after.data();
         const assetId = context.params.assetId;
+        console.log('assetId', assetId);
         console.log('snap', snap);
         console.log('context', context);
 
 
-        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`assets/${snapData.userId}/${assetId}`);
+        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`assets/${snapData.userId}/${assetId}`).makePublic();
 
         const metaData = await file.getMetadata()
         const url = metaData[0].mediaLink
