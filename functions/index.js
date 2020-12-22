@@ -32,7 +32,7 @@ exports.createThumbnailFromAsset = functions.firestore
 
         // Get an object representing the document
         // e.g. {'name': 'Marie', 'age': 66}
-        const snapData = snap.val();
+        const snapData = snap.after.data();
         const assetId = context.params.assetId;
         console.log('snap', snap);
         console.log('context', context);
@@ -46,6 +46,7 @@ exports.createThumbnailFromAsset = functions.firestore
         console.log('url', url)
         // const file = functions.storage.bucket().file(`${asset.fullPath}`);
         // const metaData = await file.getMetaData();
+        asset['thumbnails'] = {};
         asset['thumbnails']['small'] = url;
         // access a particular field as you would any JS property
 
