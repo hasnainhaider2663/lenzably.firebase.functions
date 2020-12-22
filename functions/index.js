@@ -27,20 +27,28 @@ exports.createProfile = functions.auth.user().onCreate((user) => {
 
 exports.createThumbnailFromAsset = functions.firestore
     .document('assets/{assetId}')
-    .onCreate(async (snap, context) => {
+    .onUpdate(async (snap, context) => {
+
+
         // Get an object representing the document
         // e.g. {'name': 'Marie', 'age': 66}
-        const asset = snap.data();
+        const snapData = snap.val();
+        const assetId = context.params.assetId;
         console.log('snap', snap);
         console.log('context', context);
 
-        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`${asset.fullPath}`);
-        console.log('file', file)
+
+        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`assets/${snapData.userId}/${assetId}`);
+
+        const metaData = await file.getMetadata()
+        const url = metaData[0].mediaLink
+        let asset = {}
+        console.log('url', url)
         // const file = functions.storage.bucket().file(`${asset.fullPath}`);
-        const metaData = await file.getMetaData();
-        asset['thumbnails']['small'] = metaData[0].mediaLink;
+        // const metaData = await file.getMetaData();
+        asset['thumbnails']['small'] = url;
         // access a particular field as you would any JS property
 
-        return admin.firestore().doc('assets/' + asset.uid).set(asset);
+        return admin.firestore().doc('assets/' + asset.uid).update(asset);
         // perform desired operations ...
     });
