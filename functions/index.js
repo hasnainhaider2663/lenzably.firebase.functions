@@ -28,7 +28,7 @@ exports.createProfile = functions.auth.user().onCreate((user) => {
     return admin.firestore().doc('users/' + user.uid).set(userObject);
 
 });
-exports.onOriginalAssetFileUpload = functions.storage.object().onFinalize(async (object) => {
+exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-assets').object().onFinalize(async (object) => {
 // [END generateThumbnailTrigger]
     // [START eventAttributes]
     const fileBucket = object.bucket; // The Storage bucket that contains the file.
@@ -53,44 +53,57 @@ exports.onOriginalAssetFileUpload = functions.storage.object().onFinalize(async 
 
     // [START thumbnailGeneration]
     // Download file from bucket.
-    const bucket = admin.storage().bucket(fileBucket);
+    const lenzablyOriginalAssetBucket = admin.storage().bucket(fileBucket);
     const tempFilePath = path.join(os.tmpdir(), fileName);
     const metadata = {
         contentType: contentType,
     };
-    await bucket.file(filePath).download({destination: tempFilePath});
+    await lenzablyOriginalAssetBucket.file(filePath).download({destination: tempFilePath});
     console.log('Image downloaded locally to', tempFilePath);
 
 
+    const previewBucket = admin.storage().bucket('lenzably-previews');
 
 
 
+    const destination = `assets/${'_thumb_' + fileName}`;
 
+    try {
+        // Uploads a local file to the bucket
+        const result = await previewBucket.upload(tempFilePath, {
+            destination: destination,
+            gzip: true,
+            metadata: {
+                cacheControl: 'public, max-age=31536000',
+            },
+        });
+       const makePublicResult= await result[0].makePublic()
 
+        functions.logger.log(`R E S U L T`, result);
+        functions.logger.log(`makePublicResult `, makePublicResult);
 
-
-
-
-
-
-
-
-
+        functions.logger.log(`D E S T I N A T I O N`, destination);
+        fs.unlinkSync(tempFilePath)
+    } catch (e) {
+        functions.logger.error(e)
+        throw new Error("uploadLocalFileToStorage failed: " + e);
+    }
 
 
     // Generate a thumbnail using ImageMagick.
-    await spawn('convert', [tempFilePath, '-thumbnail', '200x200>', tempFilePath]);
-    console.log('Thumbnail created at', tempFilePath);
-    // We add a 'thumb_' prefix to thumbnails file name. That's where we'll upload the thumbnail.
-    const thumbFileName = `thumb_${fileName}`;
-    const thumbFilePath = path.join(path.dirname(filePath), thumbFileName);
-    // Uploading the thumbnail.
-    await bucket.upload(tempFilePath, {
-        destination: thumbFilePath,
-        metadata: metadata,
-    });
+    // await spawn('convert', [tempFilePath, '-thumbnail', '200x200>', tempFilePath]);
+    // console.log('Thumbnail created at', tempFilePath);
+    // // We add a 'thumb_' prefix to thumbnails file name. That's where we'll upload the thumbnail.
+    // const thumbFileName = `thumb_${fileName}`;
+    // const thumbFilePath = path.join(path.dirname(filePath), thumbFileName);
+    // // Uploading the thumbnail.
+    // await bucket.upload(tempFilePath, {
+    //     destination: thumbFilePath,
+    //     metadata: metadata,
+    // });
     // Once the thumbnail has been uploaded delete the local file to free up disk space.
-    return fs.unlinkSync(tempFilePath);
+    // return fs.unlinkSync(tempFilePath);
+    return true;
     // [END thumbnailGeneration]
 });
 exports.createThumbnailFromAsset = functions.firestore
