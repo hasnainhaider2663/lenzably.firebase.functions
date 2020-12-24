@@ -11,6 +11,7 @@ const spawn = require('child-process-promise').spawn;
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+var ffmpeg = require("ffmpeg");
 admin.initializeApp();
 
 
@@ -35,6 +36,7 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     const filePath = object.name; // File path in the bucket.
     const contentType = object.contentType; // File content type.
     const metageneration = object.metageneration; // Number of times metadata has been generated. New objects have a value of 1.
+    const customMetaData = object.metadata.customMetadata; // Number of times metadata has been generated. New objects have a value of 1.
     // [END eventAttributes]
 
     // [START stopConditions]
@@ -54,36 +56,39 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     // [START thumbnailGeneration]
     // Download file from bucket.
     const lenzablyOriginalAssetBucket = admin.storage().bucket(fileBucket);
-    const tempFilePath = path.join(os.tmpdir(), fileName);
+    const originalDownloadedFilePath = path.join(os.tmpdir(), fileName);
+    let watermarkedFileName = `preview_watermarked_${fileName}`;
+    const waterMarkedFilePath = path.join(os.tmpdir(), watermarkedFileName);
     const metadata = {
         contentType: contentType,
     };
-    await lenzablyOriginalAssetBucket.file(filePath).download({destination: tempFilePath});
-    console.log('Image downloaded locally to', tempFilePath);
+    await lenzablyOriginalAssetBucket.file(filePath).download({destination: originalDownloadedFilePath});
+    console.log('Image downloaded locally to', originalDownloadedFilePath);
+//finsihed downloading
 
 
+    // upload previews
     const previewBucket = admin.storage().bucket('lenzably-previews');
-
-
-
-    const destination = `assets/${'_thumb_' + fileName}`;
+    const destination = `${customMetaData.userId}/${customMetaData.collectionId}/${watermarkedFileName}`;
 
     try {
         // Uploads a local file to the bucket
-        const result = await previewBucket.upload(tempFilePath, {
+        const result = await previewBucket.upload(waterMarkedFilePath, {
             destination: destination,
             gzip: true,
             metadata: {
                 cacheControl: 'public, max-age=31536000',
             },
         });
-       const makePublicResult= await result[0].makePublic()
+        const makePublicResult = await result[0].makePublic()
 
         functions.logger.log(`R E S U L T`, result);
         functions.logger.log(`makePublicResult `, makePublicResult);
 
         functions.logger.log(`D E S T I N A T I O N`, destination);
-        fs.unlinkSync(tempFilePath)
+        fs.unlinkSync(originalDownloadedFilePath)
+        fs.unlinkSync(waterMarkedFilePath)
+        return true
     } catch (e) {
         functions.logger.error(e)
         throw new Error("uploadLocalFileToStorage failed: " + e);
@@ -103,7 +108,7 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     // });
     // Once the thumbnail has been uploaded delete the local file to free up disk space.
     // return fs.unlinkSync(tempFilePath);
-    return true;
+
     // [END thumbnailGeneration]
 });
 exports.createThumbnailFromAsset = functions.firestore
