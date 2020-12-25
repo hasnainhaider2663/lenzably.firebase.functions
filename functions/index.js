@@ -86,8 +86,8 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
         functions.logger.log(`makePublicResult `, makePublicResult);
 
         functions.logger.log(`D E S T I N A T I O N`, destination);
-    const finalAsset=  await  admin.firestore().collection(`assets` ).add({userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId,previews:{
-           previewUploadResult: {previews:{p_200x200:previewUploadResult[1]}}
+    const finalAsset=  await  admin.firestore().collection(`assets` ).add({userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId,previews:
+       {p_200x200:previewUploadResult[1]
             }});
         functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
