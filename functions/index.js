@@ -68,12 +68,10 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     const myCustomMetaData=object.metadata
     functions.logger.log(`My Custom Meta Data`, myCustomMetaData);
 
-    const destination = `assets/${'_thumb_' + fileName}`;
-
-    try {
+      try {
         // Uploads a local file to the bucket
         const previewUploadResult = await previewBucket.upload(tempFilePath, {
-            destination: destination,
+            destination: fileName,
             gzip: true,
             customMetadata:{userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId},
             metadata: {
@@ -84,10 +82,15 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
 
         functions.logger.log(`R E S U L T`, previewUploadResult);
         functions.logger.log(`makePublicResult `, makePublicResult);
+        functions.logger.log(`previewUploadResult[1] `, previewUploadResult[1]);
 
-        functions.logger.log(`D E S T I N A T I O N`, destination);
-    const finalAsset=  await  admin.firestore().collection(`assets` ).add({userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId,previews:{
-           previewUploadResult: {previews:{p_200x200:previewUploadResult[1]}}
+        functions.logger.log(`D E S T I N A T I O N`, fileName);
+    const finalAsset=  await  admin.firestore().doc(`assets/${previewUploadResult[1].md5Hash.replace('/', '*')}` ).set(
+        {userId:myCustomMetaData.userId,
+            collectionId:myCustomMetaData.collectionId,
+            previews:{
+           previewUploadResult:
+               {previews:{p_200x200:previewUploadResult[1]}}
             }});
         functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
