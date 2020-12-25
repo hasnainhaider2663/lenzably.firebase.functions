@@ -88,10 +88,8 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     const finalAsset=  await  admin.firestore().doc(`assets/${previewUploadResult[1].md5Hash.replace('/', '*')}` ).set(
         {userId:myCustomMetaData.userId,
             collectionId:myCustomMetaData.collectionId,
-            previews:{
-           previewUploadResult:
-               {previews:{p_200x200:previewUploadResult[1]}}
-            }});
+          previews:{p_200x200:previewUploadResult[1]}
+        });
         functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
     } catch (e) {
