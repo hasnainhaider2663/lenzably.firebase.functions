@@ -31,6 +31,7 @@ exports.createProfile = functions.auth.user().onCreate((user) => {
 exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-assets').object().onFinalize(async (object) => {
 // [END generateThumbnailTrigger]
     // [START eventAttributes]
+    functions.logger.log(`O B J E C T`, object)
     const fileBucket = object.bucket; // The Storage bucket that contains the file.
     const filePath = object.name; // File path in the bucket.
     const contentType = object.contentType; // File content type.
@@ -64,25 +65,31 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
 
     const previewBucket = admin.storage().bucket('lenzably-previews');
 
-
+    const myCustomMetaData=object.metadata
+    functions.logger.log(`My Custom Meta Data`, myCustomMetaData);
 
     const destination = `assets/${'_thumb_' + fileName}`;
 
     try {
         // Uploads a local file to the bucket
-        const result = await previewBucket.upload(tempFilePath, {
+        const previewUploadResult = await previewBucket.upload(tempFilePath, {
             destination: destination,
             gzip: true,
+            customMetadata:{userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId},
             metadata: {
-                cacheControl: 'public, max-age=31536000',
+                cacheControl: 'public, max-age=31536000'
             },
         });
-       const makePublicResult= await result[0].makePublic()
+       const makePublicResult= await previewUploadResult[0].makePublic()
 
-        functions.logger.log(`R E S U L T`, result);
+        functions.logger.log(`R E S U L T`, previewUploadResult);
         functions.logger.log(`makePublicResult `, makePublicResult);
 
         functions.logger.log(`D E S T I N A T I O N`, destination);
+    const finalAsset=  await  admin.firestore().collection(`assets` ).add({userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId,previews:{
+           previewUploadResult: {previews:{p_200x200:previewUploadResult[1]}}
+            }});
+        functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
     } catch (e) {
         functions.logger.error(e)
