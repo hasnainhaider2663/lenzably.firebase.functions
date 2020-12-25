@@ -65,7 +65,7 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
 
     const previewBucket = admin.storage().bucket('lenzably-previews');
 
-    const myCustomMetaData=object.metadata
+    const myCustomMetaData = object.metadata
     functions.logger.log(`My Custom Meta Data`, myCustomMetaData);
 
     const destination = `assets/${'_thumb_' + fileName}`;
@@ -75,20 +75,25 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
         const previewUploadResult = await previewBucket.upload(tempFilePath, {
             destination: destination,
             gzip: true,
-            customMetadata:{userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId},
+            customMetadata: {userId: myCustomMetaData.userId, collectionId: myCustomMetaData.collectionId},
             metadata: {
                 cacheControl: 'public, max-age=31536000'
             },
         });
-       const makePublicResult= await previewUploadResult[0].makePublic()
+        const makePublicResult = await previewUploadResult[0].makePublic()
 
         functions.logger.log(`R E S U L T`, previewUploadResult);
         functions.logger.log(`makePublicResult `, makePublicResult);
 
         functions.logger.log(`D E S T I N A T I O N`, destination);
-    const finalAsset=  await  admin.firestore().collection(`assets` ).add({userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId,previews:
-       {p_200x200:previewUploadResult[1]
-            }});
+        const finalAsset = await admin.firestore().collection(`assets`).add(
+            {
+                userId: myCustomMetaData.userId,
+                collectionId: myCustomMetaData.collectionId,
+                name: previewUploadResult[1].name,
+                md5Hash: previewUploadResult[1].md5Hash,
+                previews: {p_200x200: previewUploadResult[1]}
+            });
         functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
     } catch (e) {
