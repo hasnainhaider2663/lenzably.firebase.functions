@@ -65,31 +65,33 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
 
     const previewBucket = admin.storage().bucket('lenzably-previews');
 
-    const myCustomMetaData=object.metadata
+    const myCustomMetaData = object.metadata
     functions.logger.log(`My Custom Meta Data`, myCustomMetaData);
 
-      try {
+    try {
         // Uploads a local file to the bucket
         const previewUploadResult = await previewBucket.upload(tempFilePath, {
             destination: fileName,
             gzip: true,
-            customMetadata:{userId:myCustomMetaData.userId,collectionId:myCustomMetaData.collectionId},
+            customMetadata: {userId: myCustomMetaData.userId, collectionId: myCustomMetaData.collectionId},
             metadata: {
                 cacheControl: 'public, max-age=31536000'
             },
         });
-       const makePublicResult= await previewUploadResult[0].makePublic()
+        const makePublicResult = await previewUploadResult[0].makePublic()
 
         functions.logger.log(`R E S U L T`, previewUploadResult);
         functions.logger.log(`makePublicResult `, makePublicResult);
         functions.logger.log(`previewUploadResult[1] `, previewUploadResult[1]);
 
         functions.logger.log(`D E S T I N A T I O N`, fileName);
-    const finalAsset=  await  admin.firestore().doc(`assets/${previewUploadResult[1].md5Hash.replace('/', '*')}` ).set(
-        {userId:myCustomMetaData.userId,
-            collectionId:myCustomMetaData.collectionId,
-          previews:{p_200x200:previewUploadResult[1]}
-        });
+        const finalAsset = await admin.firestore().doc(`assets/${previewUploadResult[1].md5Hash.replace('/', '*')}`).set(
+            {
+                userId: myCustomMetaData.userId,
+                collectionId: myCustomMetaData.collectionId,
+                md5Hash: previewUploadResult[1].md5Hash, name: previewUploadResult[1].name,
+                previews: {p_200x200: previewUploadResult[1]}
+            });
         functions.logger.log(`final Asset ======>`, finalAsset);
         fs.unlinkSync(tempFilePath)
     } catch (e) {
@@ -114,32 +116,17 @@ exports.onOriginalAssetFileUpload = functions.storage.bucket('lenzably-original-
     return true;
     // [END thumbnailGeneration]
 });
-exports.createThumbnailFromAsset = functions.firestore
-    .document('assets/{assetId}')
-    .onUpdate(async (snap, context) => {
+exports.updatedAt = functions.firestore
+    .document('collections/{collectionID}')
+    .onCreate((change, context) => {
 
 
-        // Get an object representing the document
-        // e.g. {'name': 'Marie', 'age': 66}
-        const snapData = snap.after.data();
-        const assetId = context.params.assetId;
-        console.log('assetId', assetId);
-        console.log('snap', snap);
-        console.log('context', context);
 
+            return change.ref.set(
+                {
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                },
+                { merge: true }
+            );
 
-        const file = admin.storage().bucket('freedom-collective.appspot.com').file(`assets/${snapData.userId}/${assetId}`).makePublic();
-
-        const metaData = await file.getMetadata()
-        const url = metaData[0].mediaLink
-        let asset = {}
-        console.log('url', url)
-        // const file = functions.storage.bucket().file(`${asset.fullPath}`);
-        // const metaData = await file.getMetaData();
-        asset['thumbnails'] = {};
-        asset['thumbnails']['small'] = url;
-        // access a particular field as you would any JS property
-
-        return admin.firestore().doc('assets/' + assetId).update(asset);
-        // perform desired operations ...
     });
